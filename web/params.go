@@ -31,6 +31,7 @@ type Params struct {
 	PostId                    string
 	FileId                    string
 	Filename                  string
+	UploadId                  string
 	PluginId                  string
 	CommandId                 string
 	HookId                    string
@@ -79,6 +80,9 @@ type Params struct {
 	FilterParentTeamPermitted bool
 	CategoryId                string
 	WarnMetricId              string
+
+	// Cloud
+	InvoiceId string
 }
 
 func ParamsFromRequest(r *http.Request) *Params {
@@ -122,6 +126,10 @@ func ParamsFromRequest(r *http.Request) *Params {
 	}
 
 	params.Filename = query.Get("filename")
+
+	if val, ok := props["upload_id"]; ok {
+		params.UploadId = val
+	}
 
 	if val, ok := props["plugin_id"]; ok {
 		params.PluginId = val
@@ -209,6 +217,10 @@ func ParamsFromRequest(r *http.Request) *Params {
 
 	if val, ok := props["remote_id"]; ok {
 		params.RemoteId = val
+	}
+
+	if val, ok := props["invoice_id"]; ok {
+		params.InvoiceId = val
 	}
 
 	params.Scope = query.Get("scope")

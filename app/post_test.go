@@ -893,15 +893,15 @@ func TestCreatePostAsUser(t *testing.T) {
 			UserId:    bot.UserId,
 		}
 
-		channelMemberBefore, appErr := th.App.Srv().Store.Channel().GetMember(th.BasicChannel.Id, th.BasicUser.Id)
-		require.Nil(t, appErr)
+		channelMemberBefore, nErr := th.App.Srv().Store.Channel().GetMember(th.BasicChannel.Id, th.BasicUser.Id)
+		require.Nil(t, nErr)
 
 		time.Sleep(1 * time.Millisecond)
 		_, appErr = th.App.CreatePostAsUser(post, "", true)
 		require.Nil(t, appErr)
 
-		channelMemberAfter, appErr := th.App.Srv().Store.Channel().GetMember(th.BasicChannel.Id, th.BasicUser.Id)
-		require.Nil(t, appErr)
+		channelMemberAfter, nErr := th.App.Srv().Store.Channel().GetMember(th.BasicChannel.Id, th.BasicUser.Id)
+		require.Nil(t, nErr)
 
 		require.Equal(t, channelMemberAfter.LastViewedAt, channelMemberBefore.LastViewedAt)
 	})
@@ -1844,5 +1844,62 @@ func TestFillInPostProps(t *testing.T) {
 
 		assert.Nil(t, err)
 		assert.Equal(t, post1.Props, model.StringInterface{"disable_group_highlight": true})
+	})
+}
+
+func TestThreadMembership(t *testing.T) {
+	t.Run("should update memberships for conversation participants", func(t *testing.T) {
+		th := Setup(t).InitBasic()
+		defer th.TearDown()
+
+		user1 := th.BasicUser
+		user2 := th.BasicUser2
+
+		channel := th.CreateChannel(th.BasicTeam)
+		th.AddUserToChannel(user2, channel)
+
+		postRoot, err := th.App.CreatePost(&model.Post{
+			UserId:    user1.Id,
+			ChannelId: channel.Id,
+			Message:   "root post",
+		}, channel, false, true)
+		require.Nil(t, err)
+
+		_, err = th.App.CreatePost(&model.Post{
+			UserId:    user1.Id,
+			ChannelId: channel.Id,
+			RootId:    postRoot.Id,
+			Message:   fmt.Sprintf("@%s", user2.Username),
+		}, channel, false, true)
+		require.Nil(t, err)
+
+		// first user should now be part of the thread since they replied to a post
+		memberships, err2 := th.App.GetThreadMembershipsForUser(user1.Id)
+		require.Nil(t, err2)
+		require.Len(t, memberships, 1)
+		// second user should also be part of a thread since they were mentioned
+		memberships, err2 = th.App.GetThreadMembershipsForUser(user2.Id)
+		require.Nil(t, err2)
+		require.Len(t, memberships, 1)
+
+		post2, err := th.App.CreatePost(&model.Post{
+			UserId:    user2.Id,
+			ChannelId: channel.Id,
+			Message:   "second post",
+		}, channel, false, true)
+		require.Nil(t, err)
+
+		_, err = th.App.CreatePost(&model.Post{
+			UserId:    user2.Id,
+			ChannelId: channel.Id,
+			RootId:    post2.Id,
+			Message:   fmt.Sprintf("@%s", user1.Username),
+		}, channel, false, true)
+		require.Nil(t, err)
+
+		// first user should now be part of two threads
+		memberships, err2 = th.App.GetThreadMembershipsForUser(user1.Id)
+		require.Nil(t, err2)
+		require.Len(t, memberships, 2)
 	})
 }

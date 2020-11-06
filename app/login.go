@@ -125,7 +125,7 @@ func (a *App) GetUserForLogin(id, loginId string) (*model.User, *model.AppError)
 	if len(id) != 0 {
 		user, err := a.GetUser(id)
 		if err != nil {
-			if err.Id != store.MISSING_ACCOUNT_ERROR {
+			if err.Id != MISSING_ACCOUNT_ERROR {
 				err.StatusCode = http.StatusInternalServerError
 				return nil, err
 			}
@@ -218,7 +218,7 @@ func (a *App) DoLogin(w http.ResponseWriter, r *http.Request, user *model.User, 
 
 	if a.Srv().License() != nil && *a.Srv().License().Features.LDAP && a.Ldap() != nil {
 		a.Srv().Go(func() {
-			a.Ldap().UpdateProfilePictureIfNecessary(user, session)
+			a.Ldap().UpdateProfilePictureIfNecessary(*user, session)
 		})
 	}
 
